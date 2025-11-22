@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TravelMate AI - Multi-Agent Tourism System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #e0f2fe 0%, #f3e8ff 50%, #fce7f3 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .sparkle {
+            width: 40px;
+            height: 40px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            background: linear-gradient(135deg, #9333ea, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 800;
+        }
+
+        .subtitle {
+            color: #6b7280;
+            font-size: 1.2rem;
+        }
+
+        .examples {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .examples-title {
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .example-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .example-btn {
+            background: #f3e8ff;
+            color: #9333ea;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .example-btn:hover {
+            background: #e9d5ff;
+            transform: translateY(-2px);
+        }
+
+        .input-section {
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        #locationInput {
+            width: 100%;
+            padding: 20px 70px 20px 25px;
+            font-size: 1.1rem;
+            border: 2px solid #e9d5ff;
+            border-radius: 20px;
+            outline: none;
+            transition: border-color 0.3s;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        }
+
+        #locationInput:focus {
+            border-color: #9333ea;
+        }
+
+        #submitBtn {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: linear-gradient(135deg, #9333ea, #ec4899);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #submitBtn:hover:not(:disabled) {
+            box-shadow: 0 6px 12px rgba(147, 51, 234, 0.4);
+            transform: translateY(-50%) scale(1.05);
+        }
+
+        #submitBtn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .spinner {
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .error-box {
+            background: #fef2f2;
+            border: 2px solid #fecaca;
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 30px;
+            animation: slideUp 0.5s ease-out;
+        }
+
+        .error-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            color: #dc2626;
+            font-weight: 500;
+        }
+
+        .results {
+            display: none;
+            animation: slideUp 0.5s ease-out;
+        }
+
+        .results.show {
+            display: block;
+        }
+
+        .location-card, .weather-card, .places-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        .location-card {
+            border: 2px solid #e9d5ff;
+        }
+
+        .weather-card {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            border: none;
+        }
+
+        .places-card {
+            border: 2px solid #fce7f3;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .card-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        .location-subtitle {
+            color: #6b7280;
+            font-size: 0.9rem;
+            margin-left: 38px;
+        }
+
+        .weather-stats {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .weather-temp {
+            font-size: 3.5rem;
+            font-weight: 700;
+        }
+
+        .weather-label {
+            color: #bfdbfe;
+            margin-top: 8px;
+        }
+
+        .weather-divider {
+            width: 1px;
+            height: 60px;
+            background: rgba(255,255,255,0.3);
+        }
+
+        .places-list {
+            list-style: none;
+        }
+
+        .place-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 18px;
+            background: linear-gradient(135deg, #fce7f3, #f3e8ff);
+            border-radius: 15px;
+            margin-bottom: 12px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .place-item:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateX(5px);
+        }
+
+        .place-number {
+            width: 35px;
+            height: 35px;
+            background: linear-gradient(135deg, #ec4899, #9333ea);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .place-name {
+            color: #374151;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .no-places {
+            background: #fef3c7;
+            border: 2px solid #fde047;
+            border-radius: 20px;
+            padding: 25px;
+            text-align: center;
+            color: #92400e;
+        }
+
+        .footer {
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.9rem;
+            margin-top: 50px;
+            line-height: 1.8;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @media (max-width: 640px) {
+            h1 { font-size: 2.5rem; }
+            .weather-stats { gap: 15px; }
+            .weather-divider { display: none; }
+            .weather-temp { font-size: 2.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-title">
+                <svg class="sparkle" fill="none" stroke="#9333ea" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+                <h1>TravelMate AI</h1>
+                <svg class="sparkle" fill="none" stroke="#ec4899" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+            </div>
+            <p class="subtitle">Your intelligent multi-agent tourism companion</p>
+        </div>
+
+        <div class="examples">
+            <p class="examples-title">Try these examples:</p>
+            <div class="example-buttons">
+                <button class="example-btn" onclick="setExample('I am going to Paris, let us plan my trip')">Paris trip</button>
+                <button class="example-btn" onclick="setExample('What is the weather in Tokyo?')">Tokyo weather</button>
+                <button class="example-btn" onclick="setExample('I want to visit London, what can I see?')">London attractions</button>
+                <button class="example-btn" onclick="setExample('I am going to Bangalore, let us plan my trip')">Bangalore trip</button>
+            </div>
+        </div>
+
+        <div class="input-section">
+            <input 
+                type="text" 
+                id="locationInput" 
+                placeholder="e.g., 'I'm going to Bangalore, let's plan my trip'"
+                onkeypress="handleKeyPress(event)"
+            />
+            <button id="submitBtn" onclick="handleSubmit()">
+                <svg id="sendIcon" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                </svg>
+                <div id="loadingSpinner" class="spinner" style="display: none;"></div>
+            </button>
+        </div>
+
+        <div id="errorBox" style="display: none;"></div>
+
+        <div id="results" class="results"></div>
+
+        <div class="footer">
+            <p>🌐 Powered by Open-Meteo, OpenStreetMap & Nominatim APIs</p>
+            <p>🤖 Multi-Agent System: Parent Agent + Weather Agent + Places Agent</p>
+        </div>
+    </div>
+
+    <script>
+        var isLoading = false;
+
+        function setExample(text) {
+            document.getElementById('locationInput').value = text;
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !isLoading) {
+                handleSubmit();
+            }
+        }
+
+        function getCoordinates(place) {
+            return fetch(
+                'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(place) + '&format=json&limit=1',
+                { headers: { 'User-Agent': 'TravelMateAI/1.0' } }
+            ).then(function(response) {
+                if (!response.ok) throw new Error('Geocoding failed');
+                return response.json();
+            }).then(function(data) {
+                if (data.length === 0) return null;
+                return {
+                    lat: parseFloat(data[0].lat),
+                    lon: parseFloat(data[0].lon),
+                    displayName: data[0].display_name
+                };
+            });
+        }
+
+        function getWeather(lat, lon) {
+            return fetch(
+                'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon + '&current=temperature_2m,precipitation_probability&timezone=auto'
+            ).then(function(response) {
+                if (!response.ok) throw new Error('Weather API failed');
+                return response.json();
+            }).then(function(data) {
+                return {
+                    temperature: Math.round(data.current.temperature_2m),
+                    rainChance: data.current.precipitation_probability || 0
+                };
+            }).catch(function(err) {
+                console.error('Weather error:', err);
+                return null;
+            });
+        }
+
+        function getPlaces(lat, lon) {
+            var query = '[out:json][timeout:25];\n' +
+                '(\n' +
+                '  node["tourism"="attraction"](around:15000,' + lat + ',' + lon + ');\n' +
+                '  node["tourism"="museum"](around:15000,' + lat + ',' + lon + ');\n' +
+                '  node["historic"](around:15000,' + lat + ',' + lon + ');\n' +
+                '  node["leisure"="park"](around:15000,' + lat + ',' + lon + ');\n' +
+                '  way["tourism"="attraction"](around:15000,' + lat + ',' + lon + ');\n' +
+                '  way["leisure"="park"](around:15000,' + lat + ',' + lon + ');\n' +
+                ');\n' +
+                'out tags 20;';
+            
+            return fetch('https://overpass-api.de/api/interpreter', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'data=' + encodeURIComponent(query)
+            }).then(function(response) {
+                if (!response.ok) throw new Error('Places API failed');
+                return response.json();
+            }).then(function(data) {
+                var places = data.elements
+                    .filter(function(el) { return el.tags && el.tags.name; })
+                    .map(function(el) { return el.tags.name; });
+                
+                var uniquePlaces = places.filter(function(item, pos) {
+                    return places.indexOf(item) === pos;
+                });
+                return uniquePlaces.slice(0, 5);
+            }).catch(function(err) {
+                console.error('Places error:', err);
+                return [];
+            });
+        }
+
+        function showError(message) {
+            var errorBox = document.getElementById('errorBox');
+            errorBox.innerHTML =
+                '<div class="error-box">' +
+                    '<div class="error-content">' +
+                        '<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">' +
+                            '<circle cx="12" cy="12" r="10"/>' +
+                            '<line x1="12" y1="8" x2="12" y2="12"/>' +
+                            '<line x1="12" y1="16" x2="12.01" y2="16"/>' +
+                        '</svg>' +
+                        '<span>' + message + '</span>' +
+                    '</div>' +
+                '</div>';
+            errorBox.style.display = 'block';
+        }
+
+        function hideError() {
+            document.getElementById('errorBox').style.display = 'none';
+        }
+
+        function displayResults(data) {
+            var resultsDiv = document.getElementById('results');
+            var html = '';
+
+            html += '<div class="location-card">' +
+                '<div class="card-header">' +
+                    '<svg width="28" height="28" fill="none" stroke="#9333ea" stroke-width="2" viewBox="0 0 24 24">' +
+                        '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>' +
+                        '<circle cx="12" cy="10" r="3"/>' +
+                    '</svg>' +
+                    '<h2 class="card-title">' + data.place + '</h2>' +
+                '</div>' +
+                '<p class="location-subtitle">' + data.displayName + '</p>' +
+            '</div>';
+
+            if (data.weather) {
+                var icon = data.weather.rainChance > 30 ? 
+                    '<path d="M16 13v8M8 13v8M12 15v8M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/>' :
+                    '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>';
+                
+                html += '<div class="weather-card">' +
+                    '<div class="card-header">' +
+                        '<svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">' +
+                            icon +
+                        '</svg>' +
+                        '<h3 class="card-title">Current Weather</h3>' +
+                    '</div>' +
+                    '<div class="weather-stats">' +
+                        '<div>' +
+                            '<p class="weather-temp">' + data.weather.temperature + '°C</p>' +
+                            '<p class="weather-label">Temperature</p>' +
+                        '</div>' +
+                        '<div class="weather-divider"></div>' +
+                        '<div>' +
+                            '<p style="font-size: 2rem; font-weight: 700;">' + data.weather.rainChance + '%</p>' +
+                            '<p class="weather-label">Chance of Rain</p>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+            }
+
+            if (data.places && data.places.length > 0) {
+                html += '<div class="places-card">' +
+                    '<div class="card-header">' +
+                        '<svg width="30" height="30" fill="none" stroke="#ec4899" stroke-width="2" viewBox="0 0 24 24">' +
+                            '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>' +
+                            '<circle cx="12" cy="10" r="3"/>' +
+                        '</svg>' +
+                        '<h3 class="card-title">Places to Visit</h3>' +
+                    '</div>' +
+                    '<ul class="places-list">';
+                
+                for (var i = 0; i < data.places.length; i++) {
+                    html += '<li class="place-item">' +
+                        '<div class="place-number">' + (i + 1) + '</div>' +
+                        '<span class="place-name">' + data.places[i] + '</span>' +
+                    '</li>';
+                }
+                
+                html += '</ul></div>';
+            } else if (data.places && data.places.length === 0) {
+                html += '<div class="no-places">' +
+                    '<p>No popular attractions found nearby in the database. Try a major city!</p>' +
+                '</div>';
+            }
+
+            resultsDiv.innerHTML = html;
+            resultsDiv.classList.add('show');
+        }
+
+        function handleSubmit() {
+            var input = document.getElementById('locationInput').value.trim();
+            if (!input || isLoading) return;
+
+            isLoading = true;
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('sendIcon').style.display = 'none';
+            document.getElementById('loadingSpinner').style.display = 'block';
+            document.getElementById('results').classList.remove('show');
+            hideError();
+
+            var placeMatch = input.match(/(?:to|visit|going to)\s+([A-Za-z\s]+?)(?:,|\?|$|let|what|and)/i);
+            var placeName = placeMatch ? placeMatch[1].trim() : input.trim();
+            
+            getCoordinates(placeName).then(function(coords) {
+                if (!coords) {
+                    showError('I do not know if "' + placeName + '" exists or I could not find it. Please try another location.');
+                    isLoading = false;
+                    document.getElementById('submitBtn').disabled = false;
+                    document.getElementById('sendIcon').style.display = 'block';
+                    document.getElementById('loadingSpinner').style.display = 'none';
+                    return;
+                }
+
+                var lowerInput = input.toLowerCase();
+                var askingWeather = lowerInput.indexOf('weather') !== -1 || lowerInput.indexOf('temperature') !== -1 || 
+                                   lowerInput.indexOf('temp') !== -1 || lowerInput.indexOf('rain') !== -1;
+                var askingPlaces = lowerInput.indexOf('places') !== -1 || lowerInput.indexOf('visit') !== -1 || 
+                                  lowerInput.indexOf('attractions') !== -1 || lowerInput.indexOf('trip') !== -1 || 
+                                  lowerInput.indexOf('plan') !== -1 || lowerInput.indexOf('see') !== -1;
+
+                var showWeather = askingWeather || !askingPlaces;
+                var showPlaces = askingPlaces || !askingWeather;
+
+                var weatherPromise = showWeather ? getWeather(coords.lat, coords.lon) : Promise.resolve(null);
+                var placesPromise = showPlaces ? getPlaces(coords.lat, coords.lon) : Promise.resolve([]);
+
+                return Promise.all([weatherPromise, placesPromise]).then(function(results) {
+                    displayResults({
+                        place: placeName,
+                        displayName: coords.displayName,
+                        weather: results[0],
+                        places: results[1]
+                    });
+
+                    isLoading = false;
+                    document.getElementById('submitBtn').disabled = false;
+                    document.getElementById('sendIcon').style.display = 'block';
+                    document.getElementById('loadingSpinner').style.display = 'none';
+                });
+            }).catch(function(err) {
+                console.error('Error:', err);
+                showError('Something went wrong. Please try again with a different location.');
+                isLoading = false;
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('sendIcon').style.display = 'block';
+                document.getElementById('loadingSpinner').style.display = 'none';
+            });
+        }
+    </script>
+</body>
+</html>
