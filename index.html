@@ -300,35 +300,17 @@
         }
 
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
         @media (max-width: 640px) {
             h1 { font-size: 2.5rem; }
@@ -338,6 +320,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="header">
@@ -356,268 +339,231 @@
         <div class="examples">
             <p class="examples-title">Try these examples:</p>
             <div class="example-buttons">
-                <button class="example-btn" onclick="setExample('I am going to Paris, let us plan my trip')">Paris trip</button>
-                <button class="example-btn" onclick="setExample('I want to visit London, what can I see?')">London attractions</button>
-                <button class="example-btn" onclick="setExample('I am going to Bangalore, let us plan my trip')">Bangalore trip</button>
+                <button class="example-btn" onclick="setExample('weather tokyo')">Tokyo Weather</button>
+                <button class="example-btn" onclick="setExample('weather in London')">London Weather</button>
+                <button class="example-btn" onclick="setExample('I am going to Paris, let us plan my trip')">Paris Trip</button>
+                <button class="example-btn" onclick="setExample('I want to visit Rome, what can I see?')">Rome Places</button>
             </div>
         </div>
 
         <div class="input-section">
-            <input 
-                type="text" 
-                id="locationInput" 
-                placeholder="e.g., 'I'm going to Bangalore, let's plan my trip'"
-                onkeypress="handleKeyPress(event)"
-            />
+            <input id="locationInput" type="text"
+                   placeholder="e.g., 'weather mumbai' or 'I'm going to Paris'"
+                   onkeypress="handleKeyPress(event)">
             <button id="submitBtn" onclick="handleSubmit()">
-                <svg id="sendIcon" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <svg id="sendIcon" width="24" height="24" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24">
                     <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
                 </svg>
-                <div id="loadingSpinner" class="spinner" style="display: none;"></div>
+                <div id="loadingSpinner" class="spinner" style="display:none;"></div>
             </button>
         </div>
 
-        <div id="errorBox" style="display: none;"></div>
-
+        <div id="errorBox" style="display:none;"></div>
         <div id="results" class="results"></div>
 
         <div class="footer">
-            <p>🌐 Powered by Open-Meteo, OpenStreetMap & Nominatim APIs</p>
-            <p>🤖 Multi-Agent System: Parent Agent + Weather Agent + Places Agent</p>
+            🌐 Powered by Open-Meteo, Nominatim & OSM APIs
         </div>
     </div>
 
-    <script>
-        var isLoading = false;
+<script>
 
-        function setExample(text) {
-            document.getElementById('locationInput').value = text;
+var isLoading = false;
+
+function setExample(t){ document.getElementById("locationInput").value=t; }
+function handleKeyPress(e){ if(e.key==="Enter"&&!isLoading) handleSubmit(); }
+
+// Geo lookup
+function getCoordinates(place){
+    return fetch(
+        "https://nominatim.openstreetmap.org/search?q="+encodeURIComponent(place)+"&format=json&limit=1",
+        {headers:{"User-Agent":"TravelMateAI/1.0"}}
+    )
+    .then(r=>r.json())
+    .then(d=>{
+        if(!d.length) return null;
+        return {
+            lat:parseFloat(d[0].lat),
+            lon:parseFloat(d[0].lon),
+            displayName:d[0].display_name
+        };
+    });
+}
+
+// Weather lookup
+function getWeather(lat,lon){
+    return fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation_probability&timezone=auto`)
+    .then(r=>r.json())
+    .then(d=>({
+        temperature: Math.round(d.current.temperature_2m),
+        rainChance: d.current.precipitation_probability || 0
+    }))
+    .catch(()=>null);
+}
+
+// Places lookup
+function getPlaces(lat,lon){
+    const query = `[out:json];(
+        node["tourism"="attraction"](around:15000,${lat},${lon});
+        node["historic"](around:15000,${lat},${lon});
+        node["leisure"="park"](around:15000,${lat},${lon});
+        way["tourism"="attraction"](around:15000,${lat},${lon});
+    );out tags 20;`;
+
+    return fetch("https://overpass-api.de/api/interpreter",{
+        method:"POST",
+        headers:{ "Content-Type":"application/x-www-form-urlencoded" },
+        body:"data="+encodeURIComponent(query)
+    })
+    .then(r=>r.json())
+    .then(d=>{
+        let places = d.elements
+            .filter(el=>el.tags && el.tags.name)
+            .map(el=>el.tags.name);
+        return [...new Set(places)].slice(0,5);
+    })
+    .catch(()=>[]);
+}
+
+// Errors
+function showError(msg){
+    document.getElementById("errorBox").innerHTML =
+    `<div class="error-box"><div class="error-content">
+        ❗ <span>${msg}</span>
+    </div></div>`;
+    document.getElementById("errorBox").style.display="block";
+}
+function hideError(){ document.getElementById("errorBox").style.display="none"; }
+
+// Render results
+function displayResults(d){
+    let html="";
+
+    html+=`
+        <div class="location-card">
+            <div class="card-header">
+                📍 <h2 class="card-title">${d.place}</h2>
+            </div>
+            <p class="location-subtitle">${d.displayName}</p>
+        </div>
+    `;
+
+    if(d.weather){
+        html+=`
+            <div class="weather-card">
+                <div class="card-header">🌤️ <h3 class="card-title">Weather</h3></div>
+                <div class="weather-stats">
+                    <div>
+                        <p class="weather-temp">${d.weather.temperature}°C</p>
+                        <p class="weather-label">Temperature</p>
+                    </div>
+                    <div class="weather-divider"></div>
+                    <div>
+                        <p style="font-size:2rem;font-weight:700;">${d.weather.rainChance}%</p>
+                        <p class="weather-label">Chance of rain</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    if(d.places && d.places.length){
+        html+=`
+        <div class="places-card">
+            <div class="card-header">📌 <h3 class="card-title">Places to visit</h3></div>
+            <ul class="places-list">
+                ${d.places.map((p,i)=>`
+                    <li class="place-item">
+                        <div class="place-number">${i+1}</div>
+                        <span class="place-name">${p}</span>
+                    </li>`).join("")}
+            </ul>
+        </div>`;
+    }
+
+    document.getElementById("results").innerHTML=html;
+    document.getElementById("results").classList.add("show");
+}
+
+// MAIN HANDLER FIXED LOGIC
+function handleSubmit(){
+    let input=document.getElementById("locationInput").value.trim();
+    if(!input || isLoading) return;
+
+    isLoading=true;
+    document.getElementById("submitBtn").disabled=true;
+    document.getElementById("sendIcon").style.display="none";
+    document.getElementById("loadingSpinner").style.display="block";
+
+    hideError();
+    document.getElementById("results").classList.remove("show");
+
+    let lower = input.toLowerCase();
+    let placeName = "";
+
+    // ⭐ WEATHER-ONLY MODE ⭐
+    if(lower.startsWith("weather in ")){
+        placeName = input.substring(11).trim();
+    }
+    else if(lower.startsWith("weather ")){
+        placeName = input.substring(8).trim();
+    }
+    else if(lower.startsWith("temperature ")){
+        placeName = input.substring(12).trim();
+    }
+    else if(lower.startsWith("temp ")){
+        placeName = input.substring(5).trim();
+    }
+    else if(lower.endsWith(" weather")){
+        placeName = input.replace(/weather$/i,"").trim();
+    }
+    // Trip-planning matching
+    else {
+        let match = input.match(/(?:to|visit|going to)\s+([A-Za-z\s]+?)(?:$|,|\?|let|and|what)/i);
+        placeName = match ? match[1].trim() : input.trim();
+    }
+
+    // Now fetch data
+    getCoordinates(placeName).then(coords=>{
+        if(!coords){
+            showError(`I could not find "${placeName}". Try another location.`);
+            reset();
+            return;
         }
 
-        function handleKeyPress(event) {
-            if (event.key === 'Enter' && !isLoading) {
-                handleSubmit();
-            }
-        }
+        let weatherOnly =
+            lower.startsWith("weather") ||
+            lower.startsWith("temperature") ||
+            lower.startsWith("temp") ||
+            lower.endsWith(" weather");
 
-        function getCoordinates(place) {
-            return fetch(
-                'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(place) + '&format=json&limit=1',
-                { headers: { 'User-Agent': 'TravelMateAI/1.0' } }
-            ).then(function(response) {
-                if (!response.ok) throw new Error('Geocoding failed');
-                return response.json();
-            }).then(function(data) {
-                if (data.length === 0) return null;
-                return {
-                    lat: parseFloat(data[0].lat),
-                    lon: parseFloat(data[0].lon),
-                    displayName: data[0].display_name
-                };
+        let weatherPromise = getWeather(coords.lat, coords.lon);
+        let placesPromise = weatherOnly ? Promise.resolve([]) : getPlaces(coords.lat, coords.lon);
+
+        return Promise.all([weatherPromise, placesPromise]).then(([weather, places])=>{
+            displayResults({
+                place: placeName,
+                displayName: coords.displayName,
+                weather: weather,
+                places: places
             });
-        }
+            reset();
+        });
 
-        function getWeather(lat, lon) {
-            return fetch(
-                'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon + '&current=temperature_2m,precipitation_probability&timezone=auto'
-            ).then(function(response) {
-                if (!response.ok) throw new Error('Weather API failed');
-                return response.json();
-            }).then(function(data) {
-                return {
-                    temperature: Math.round(data.current.temperature_2m),
-                    rainChance: data.current.precipitation_probability || 0
-                };
-            }).catch(function(err) {
-                console.error('Weather error:', err);
-                return null;
-            });
-        }
+    }).catch(()=>{
+        showError("Something went wrong. Please try again.");
+        reset();
+    });
+}
 
-        function getPlaces(lat, lon) {
-            var query = '[out:json][timeout:25];\n' +
-                '(\n' +
-                '  node["tourism"="attraction"](around:15000,' + lat + ',' + lon + ');\n' +
-                '  node["tourism"="museum"](around:15000,' + lat + ',' + lon + ');\n' +
-                '  node["historic"](around:15000,' + lat + ',' + lon + ');\n' +
-                '  node["leisure"="park"](around:15000,' + lat + ',' + lon + ');\n' +
-                '  way["tourism"="attraction"](around:15000,' + lat + ',' + lon + ');\n' +
-                '  way["leisure"="park"](around:15000,' + lat + ',' + lon + ');\n' +
-                ');\n' +
-                'out tags 20;';
-            
-            return fetch('https://overpass-api.de/api/interpreter', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'data=' + encodeURIComponent(query)
-            }).then(function(response) {
-                if (!response.ok) throw new Error('Places API failed');
-                return response.json();
-            }).then(function(data) {
-                var places = data.elements
-                    .filter(function(el) { return el.tags && el.tags.name; })
-                    .map(function(el) { return el.tags.name; });
-                
-                var uniquePlaces = places.filter(function(item, pos) {
-                    return places.indexOf(item) === pos;
-                });
-                return uniquePlaces.slice(0, 5);
-            }).catch(function(err) {
-                console.error('Places error:', err);
-                return [];
-            });
-        }
+function reset(){
+    isLoading=false;
+    document.getElementById("submitBtn").disabled=false;
+    document.getElementById("sendIcon").style.display="block";
+    document.getElementById("loadingSpinner").style.display="none";
+}
 
-        function showError(message) {
-            var errorBox = document.getElementById('errorBox');
-            errorBox.innerHTML =
-                '<div class="error-box">' +
-                    '<div class="error-content">' +
-                        '<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">' +
-                            '<circle cx="12" cy="12" r="10"/>' +
-                            '<line x1="12" y1="8" x2="12" y2="12"/>' +
-                            '<line x1="12" y1="16" x2="12.01" y2="16"/>' +
-                        '</svg>' +
-                        '<span>' + message + '</span>' +
-                    '</div>' +
-                '</div>';
-            errorBox.style.display = 'block';
-        }
+</script>
 
-        function hideError() {
-            document.getElementById('errorBox').style.display = 'none';
-        }
-
-        function displayResults(data) {
-            var resultsDiv = document.getElementById('results');
-            var html = '';
-
-            html += '<div class="location-card">' +
-                '<div class="card-header">' +
-                    '<svg width="28" height="28" fill="none" stroke="#9333ea" stroke-width="2" viewBox="0 0 24 24">' +
-                        '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>' +
-                        '<circle cx="12" cy="10" r="3"/>' +
-                    '</svg>' +
-                    '<h2 class="card-title">' + data.place + '</h2>' +
-                '</div>' +
-                '<p class="location-subtitle">' + data.displayName + '</p>' +
-            '</div>';
-
-            if (data.weather) {
-                var icon = data.weather.rainChance > 30 ? 
-                    '<path d="M16 13v8M8 13v8M12 15v8M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/>' :
-                    '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>';
-                
-                html += '<div class="weather-card">' +
-                    '<div class="card-header">' +
-                        '<svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">' +
-                            icon +
-                        '</svg>' +
-                        '<h3 class="card-title">Current Weather</h3>' +
-                    '</div>' +
-                    '<div class="weather-stats">' +
-                        '<div>' +
-                            '<p class="weather-temp">' + data.weather.temperature + '°C</p>' +
-                            '<p class="weather-label">Temperature</p>' +
-                        '</div>' +
-                        '<div class="weather-divider"></div>' +
-                        '<div>' +
-                            '<p style="font-size: 2rem; font-weight: 700;">' + data.weather.rainChance + '%</p>' +
-                            '<p class="weather-label">Chance of Rain</p>' +
-                        '</div>' +
-                    '</div>' +
-                '</div>';
-            }
-
-            if (data.places && data.places.length > 0) {
-                html += '<div class="places-card">' +
-                    '<div class="card-header">' +
-                        '<svg width="30" height="30" fill="none" stroke="#ec4899" stroke-width="2" viewBox="0 0 24 24">' +
-                            '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>' +
-                            '<circle cx="12" cy="10" r="3"/>' +
-                        '</svg>' +
-                        '<h3 class="card-title">Places to Visit</h3>' +
-                    '</div>' +
-                    '<ul class="places-list">';
-                
-                for (var i = 0; i < data.places.length; i++) {
-                    html += '<li class="place-item">' +
-                        '<div class="place-number">' + (i + 1) + '</div>' +
-                        '<span class="place-name">' + data.places[i] + '</span>' +
-                    '</li>';
-                }
-                
-                html += '</ul></div>';
-            } else if (data.places && data.places.length === 0) {
-                html += '<div class="no-places">' +
-                    '<p>No popular attractions found nearby in the database. Try a major city!</p>' +
-                '</div>';
-            }
-
-            resultsDiv.innerHTML = html;
-            resultsDiv.classList.add('show');
-        }
-
-        function handleSubmit() {
-            var input = document.getElementById('locationInput').value.trim();
-            if (!input || isLoading) return;
-
-            isLoading = true;
-            document.getElementById('submitBtn').disabled = true;
-            document.getElementById('sendIcon').style.display = 'none';
-            document.getElementById('loadingSpinner').style.display = 'block';
-            document.getElementById('results').classList.remove('show');
-            hideError();
-
-            var placeMatch = input.match(/(?:to|visit|going to)\s+([A-Za-z\s]+?)(?:,|\?|$|let|what|and)/i);
-            var placeName = placeMatch ? placeMatch[1].trim() : input.trim();
-            
-            getCoordinates(placeName).then(function(coords) {
-                if (!coords) {
-                    showError('I do not know if "' + placeName + '" exists or I could not find it. Please try another location.');
-                    isLoading = false;
-                    document.getElementById('submitBtn').disabled = false;
-                    document.getElementById('sendIcon').style.display = 'block';
-                    document.getElementById('loadingSpinner').style.display = 'none';
-                    return;
-                }
-
-                var lowerInput = input.toLowerCase();
-                var askingWeather = lowerInput.indexOf('weather') !== -1 || lowerInput.indexOf('temperature') !== -1 || 
-                                   lowerInput.indexOf('temp') !== -1 || lowerInput.indexOf('rain') !== -1;
-                var askingPlaces = lowerInput.indexOf('places') !== -1 || lowerInput.indexOf('visit') !== -1 || 
-                                  lowerInput.indexOf('attractions') !== -1 || lowerInput.indexOf('trip') !== -1 || 
-                                  lowerInput.indexOf('plan') !== -1 || lowerInput.indexOf('see') !== -1;
-
-                var showWeather = askingWeather || !askingPlaces;
-                var showPlaces = askingPlaces || !askingWeather;
-
-                var weatherPromise = showWeather ? getWeather(coords.lat, coords.lon) : Promise.resolve(null);
-                var placesPromise = showPlaces ? getPlaces(coords.lat, coords.lon) : Promise.resolve([]);
-
-                return Promise.all([weatherPromise, placesPromise]).then(function(results) {
-                    displayResults({
-                        place: placeName,
-                        displayName: coords.displayName,
-                        weather: results[0],
-                        places: results[1]
-                    });
-
-                    isLoading = false;
-                    document.getElementById('submitBtn').disabled = false;
-                    document.getElementById('sendIcon').style.display = 'block';
-                    document.getElementById('loadingSpinner').style.display = 'none';
-                });
-            }).catch(function(err) {
-                console.error('Error:', err);
-                showError('Something went wrong. Please try again with a different location.');
-                isLoading = false;
-                document.getElementById('submitBtn').disabled = false;
-                document.getElementById('sendIcon').style.display = 'block';
-                document.getElementById('loadingSpinner').style.display = 'none';
-            });
-        }
-    </script>
 </body>
 </html>
-
